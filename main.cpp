@@ -2,14 +2,15 @@
 #include <Windows.h>
 
 #include "DisplayWin32.h"
-
+#include "Timer.h"
+#include "Graphics.h"
+//инициализируем экран
 int WINAPI wWinMain(
     HINSTANCE hInstance,
     HINSTANCE hPrevInstance,
     PWSTR pCmdLine,
     int nCmdShow)
 {
-    //создаем окно
     DisplayWin32 display;
 
     if (!display.Initialize(
@@ -22,19 +23,38 @@ int WINAPI wWinMain(
             nullptr,
             L"Failed to initialize window.",
             L"Initialization Error",
-            MB_OK | MB_ICONERROR
-        );
+            MB_OK | MB_ICONERROR);
+
+        return -1;
+    }
+    //выводим экран
+    display.Show();
+
+    Graphics graphics;
+
+    if (!graphics.Initialize(
+        display.GetHandle(),
+        display.GetClientWidth(),
+        display.GetClientHeight()))
+    {
+        MessageBox(
+            display.GetHandle(),
+            L"Failed to initialize DirectX 12.",
+            L"Graphics Error",
+            MB_OK | MB_ICONERROR);
 
         return -1;
     }
 
-    //выводим
-    display.Show();
+    Timer timer;
+    timer.Reset();
 
-    //сообщения
     while (display.IsRunning())
     {
         display.ProcessMessages();
+
+        if (!display.IsRunning())
+            break;
 
         if (display.IsMinimiz())
         {
@@ -42,9 +62,19 @@ int WINAPI wWinMain(
             continue;
         }
 
-        //обновление
+        timer.Tick();
+
+        //обработка пользовательского ввода
         display.GetInput().Update();
+
+        //очистка Back Buffer
+        graphics.Clear();
+
+        //вывод кадра
+        graphics.Present();
     }
+
+    graphics.WaitForGPU();
 
     return 0;
 }
